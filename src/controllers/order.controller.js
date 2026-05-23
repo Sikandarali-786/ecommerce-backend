@@ -187,11 +187,23 @@ export const updateOrderStatus = async (req, res) => {
             });
         }
 
+        const previousStatus = order.orderStatus;
+
         if (orderStatus) {
             order.orderStatus = orderStatus;
             if (orderStatus === "Delivered") {
                 order.deliveredAt = Date.now();
                 order.paymentStatus = "Paid";
+            }
+            if (
+                orderStatus === "Cancelled" &&
+                previousStatus !== "Cancelled"
+            ) {
+                for (const item of order.items) {
+                    await Product.findByIdAndUpdate(item.product, {
+                        $inc: { stock: item.quantity },
+                    });
+                }
             }
         }
 
@@ -200,7 +212,8 @@ export const updateOrderStatus = async (req, res) => {
         }
 
         await order.save();
-        await order.populate('items.product');
+        await order.populate("items.product");
+        await order.populate("user", "name email");
 
         res.status(200).json({
             success: true,

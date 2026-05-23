@@ -34,11 +34,13 @@ export const registerUser = async (req, res) => {
       password,
     });
 
+    const safeUser = await User.findById(user._id).select("-password");
+
     res.status(201).json({
       success: true,
       message: "User registered successfully",
       token: generateToken(user._id),
-      user,
+      user: safeUser,
     });
   } catch (error) {
     res.status(500).json({
@@ -71,11 +73,20 @@ export const loginUser = async (req, res) => {
       });
     }
 
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been blocked. Please contact support.",
+      });
+    }
+
+    const safeUser = await User.findById(user._id).select("-password");
+
     res.status(200).json({
       success: true,
       message: "Login successful",
       token: generateToken(user._id),
-      user,
+      user: safeUser,
     });
   } catch (error) {
     res.status(500).json({
