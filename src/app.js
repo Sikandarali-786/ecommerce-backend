@@ -8,6 +8,7 @@ import userRoutes from "./routes/user.routes.js"
 import categoryRoutes from "./routes/category.routes.js";
 import productRoutes from "./routes/product.routes.js"
 import cartRoutes from "./routes/cart.routes.js"
+import wishlistRoutes from "./routes/wishlist.routes.js"
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/user", userRoutes)
 app.use("/api/categories", categoryRoutes);
 app.use("/api/product", productRoutes)
 app.use("/api/cart", cartRoutes)
+app.use("/api/wishlist", wishlistRoutes)
 
 
 app.get('/', (req,res)=>{
