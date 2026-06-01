@@ -1,4 +1,6 @@
 import User from "../models/user.model.js";
+import Product from "../models/product.model.js";
+import Order from "../models/order.model.js";
 
 // Get all users (Admin only)
 export const getAllUsers = async (req, res) => {
@@ -159,34 +161,25 @@ export const deleteUser = async (req, res) => {
 // Get dashboard stats (Admin only)
 export const getDashboardStats = async (req, res) => {
     try {
-        const User = (await import("../models/user.model.js")).default;
-        const Product = (await import("../models/product.model.js")).default;
-        const Order = (await import("../models/order.model.js")).default;
-        
         const totalUsers = await User.countDocuments();
         const totalProducts = await Product.countDocuments();
         const totalOrders = await Order.countDocuments();
-        
+
         const orders = await Order.find();
         const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-        
+
         // Get recent orders (last 10)
         const recentOrders = await Order.find()
             .populate('user', 'name email')
             .populate('items.product', 'title')
             .sort({ createdAt: -1 })
             .limit(10);
-        
+
         // Order status breakdown
         const ordersByStatus = await Order.aggregate([
-            {
-                $group: {
-                    _id: '$orderStatus',
-                    count: { $sum: 1 }
-                }
-            }
+            { $group: { _id: '$orderStatus', count: { $sum: 1 } } }
         ]);
-        
+
         res.status(200).json({
             success: true,
             stats: {
