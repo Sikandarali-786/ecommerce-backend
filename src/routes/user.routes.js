@@ -8,23 +8,21 @@ import {
     deleteUser,
     getDashboardStats,
 } from "../controllers/user.controller.js";
+import { updateProfile, changePassword } from "../controllers/auth.controller.js";
 
 const router = express.Router();
 
-// User routes
+// ── User profile routes ──────────────────────────────────────────────────────
 router.get("/profile", protect, (req, res) => {
-    res.status(200).json({
-        success: true,
-        user: req.user,
-    });
+    res.status(200).json({ success: true, user: req.user });
 });
 
-// Admin routes
+router.put("/profile", protect, updateProfile);
+router.put("/change-password", protect, changePassword);
+
+// ── Admin access check ───────────────────────────────────────────────────────
 router.get("/admin", protect, adminOnly, (req, res) => {
-    res.status(200).json({
-        success: true,
-        message: "Welcome Admin",
-    });
+    res.status(200).json({ success: true, message: "Welcome Admin" });
 });
 
 router.get("/admin/stats", protect, adminOnly, getDashboardStats);
