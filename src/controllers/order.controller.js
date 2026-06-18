@@ -15,7 +15,7 @@ export const createOrder = async (req, res) => {
             total,
         } = req.body;
 
-        // Validate required fields
+        // ── Basic validation ──────────────────────────────────────────────
         if (!items || items.length === 0) {
             return res.status(400).json({
                 success: false,
@@ -30,39 +30,81 @@ export const createOrder = async (req, res) => {
             });
         }
 
-        // Validate stock availability and prepare order items
-        const orderItems = [];
+        // ── Phase 1: validate all products exist and have enough stock ────
+        // Do this BEFORE touching any stock so we never partially decrement
+        const productDocs = [];
         for (const item of items) {
+            if (!item.product || item.quantity < 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid item in order",
+                });
+            }
+
             const product = await Product.findById(item.product);
-            
+
             if (!product) {
                 return res.status(404).json({
                     success: false,
-                    message: `Product ${item.product} not found`,
+                    message: `Product not found`,
                 });
             }
 
             if (product.stock < item.quantity) {
                 return res.status(400).json({
                     success: false,
-                    message: `Insufficient stock for ${product.title}`,
+                    message: `"${product.title}" only has ${product.stock} unit${
+                        product.stock === 1 ? '' : 's'
+                    } left in stock`,
                 });
             }
 
-            // Reduce stock
-            product.stock -= item.quantity;
-            await product.save();
-
-            orderItems.push({
-                product: product._id,
-                title: product.title,
-                price: product.price,
-                quantity: item.quantity,
-                image: product.images?.[0] || "",
-            });
+            productDocs.push({ product, quantity: item.quantity });
         }
 
-        // Create order
+        // ── Phase 2: atomically decrement stock for each item ─────────────
+        // Uses findOneAndUpdate with $inc + $gte condition — if the document
+        // no longer satisfies stock >= quantity (race condition), the update
+        // returns null and we roll back already-decremented items.
+        const decremented = [];
+        for (const { product, quantity } of productDocs) {
+            const updated = await Product.findOneAndUpdate(
+                {
+                    _id:   product._id,
+                    stock: { $gte: quantity }, // atomic guard
+                },
+                { $inc: { stock: -quantity } },
+                { new: true },
+            );
+
+            if (!updated) {
+                // Roll back all decrements that already succeeded
+                if (decremented.length > 0) {
+                    await Promise.all(
+                        decremented.map(({ id, qty }) =>
+                            Product.findByIdAndUpdate(id, { $inc: { stock: qty } }),
+                        ),
+                    );
+                }
+                return res.status(400).json({
+                    success: false,
+                    message: `"${product.title}" just sold out. Please update your cart.`,
+                });
+            }
+
+            decremented.push({ id: product._id, qty: quantity });
+        }
+
+        // ── Phase 3: build order items from fetched product docs ──────────
+        const orderItems = productDocs.map(({ product, quantity }) => ({
+            product:  product._id,
+            title:    product.title,
+            price:    product.price,
+            quantity,
+            image:    product.images?.[0] || "",
+        }));
+
+        // ── Phase 4: create the order ──────────────────────────────────────
         const order = await Order.create({
             user: req.user._id,
             items: orderItems,
@@ -78,10 +120,10 @@ export const createOrder = async (req, res) => {
         // Clear user's cart after successful order
         await Cart.findOneAndUpdate(
             { user: req.user._id },
-            { items: [] }
+            { items: [] },
         );
 
-        await order.populate('items.product');
+        await order.populate("items.product");
 
         res.status(201).json({
             success: true,

@@ -66,13 +66,75 @@ export const createProduct = async (req, res) => {
 // ─── GET ALL PRODUCTS ─────────────────────────────────────────────────────────
 export const getAllProducts = async (req, res) => {
     try {
-        const products = await Product.find()
-            .populate("category", "name slug")
-            .populate("createdBy", "name email");
+        const {
+            search,
+            category,
+            minPrice,
+            maxPrice,
+            sortBy,
+            page  = 1,
+            limit = 20,
+        } = req.query;
+
+        // ── Build query ──────────────────────────────────────────────────────
+        const query = {};
+
+        // Full-text search on title + description (case-insensitive)
+        if (search?.trim()) {
+            query.$or = [
+                { title:       { $regex: search.trim(), $options: 'i' } },
+                { description: { $regex: search.trim(), $options: 'i' } },
+            ];
+        }
+
+        // Category filter — accepts category _id
+        if (category?.trim()) {
+            query.category = category.trim();
+        }
+
+        // Price range
+        if (minPrice || maxPrice) {
+            query.price = {};
+            if (minPrice) query.price.$gte = Number(minPrice);
+            if (maxPrice) query.price.$lte = Number(maxPrice);
+        }
+
+        // ── Sort ─────────────────────────────────────────────────────────────
+        const sortMap = {
+            'price-asc':  { price:  1 },
+            'price-desc': { price: -1 },
+            'name-asc':   { title:  1 },
+            'name-desc':  { title: -1 },
+            'newest':     { createdAt: -1 },
+        };
+        const sort = sortMap[sortBy] ?? { createdAt: -1 };
+
+        // ── Pagination ────────────────────────────────────────────────────────
+        const pageNum  = Math.max(1, parseInt(page,  10) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+        const skip     = (pageNum - 1) * limitNum;
+
+        // ── Execute ───────────────────────────────────────────────────────────
+        const [products, total] = await Promise.all([
+            Product.find(query)
+                .populate('category', 'name slug')
+                .populate('createdBy', 'name email')
+                .sort(sort)
+                .skip(skip)
+                .limit(limitNum),
+            Product.countDocuments(query),
+        ]);
 
         res.status(200).json({
             success: true,
             products,
+            pagination: {
+                total,
+                page:       pageNum,
+                limit:      limitNum,
+                totalPages: Math.ceil(total / limitNum),
+                hasMore:    pageNum < Math.ceil(total / limitNum),
+            },
         });
     } catch (error) {
         res.status(500).json({

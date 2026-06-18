@@ -12,6 +12,7 @@ import productRoutes from "./routes/product.routes.js"
 import cartRoutes from "./routes/cart.routes.js"
 import wishlistRoutes from "./routes/wishlist.routes.js"
 import orderRoutes from "./routes/order.routes.js"
+import reviewRoutes from "./routes/review.routes.js"
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +35,7 @@ app.use("/api/product", productRoutes)
 app.use("/api/cart", cartRoutes)
 app.use("/api/wishlist", wishlistRoutes)
 app.use("/api/orders", orderRoutes)
+app.use("/api/product/:productId/reviews", reviewRoutes)
 
 app.get('/', (req, res) => {
     res.send("Backend Running....")
