@@ -1,5 +1,6 @@
 import User from "../models/user.model.js"
 import jwt from "jsonwebtoken"
+import crypto from "crypto"
 
 const generateToken = (id)=>{
     return jwt.sign({id}, process.env.JWT_SECRET, {
@@ -173,5 +174,92 @@ export const loginUser = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+// ─── FORGOT PASSWORD ──────────────────────────────────────────────────────────
+// Generates a secure reset token and stores its hash in the DB.
+// In production wire up an email service here.
+// For now the plain token is returned in the response for dev/demo use.
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    // Always return 200 — never confirm whether the email exists (security)
+    const genericMsg = "If that email is registered you will receive a reset link shortly";
+
+    if (!user) {
+      return res.status(200).json({ success: true, message: genericMsg });
+    }
+
+    // Generate a random 32-byte token
+    const rawToken  = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    user.resetPasswordToken   = hashedToken;
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    await user.save();
+
+    // ── In production: send email with this link ───────────────────────────
+    // const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${rawToken}`;
+    // await sendEmail({ to: user.email, subject: "Password Reset", html: ... });
+
+    res.status(200).json({
+      success: true,
+      message: genericMsg,
+      // Returned for dev / demo — remove in production once email is wired
+      devResetToken: rawToken,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── RESET PASSWORD ───────────────────────────────────────────────────────────
+export const resetPassword = async (req, res) => {
+  try {
+    const { token }   = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    // Hash the incoming raw token to compare against the stored hash
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken:   hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }, // not expired
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset link is invalid or has expired",
+      });
+    }
+
+    // Set new password — pre-save hook hashes it
+    user.password             = password;
+    user.resetPasswordToken   = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password reset successfully. You can now log in.",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -72,18 +72,31 @@ export const upload = multer({
 
 // ─── DELETE IMAGE HELPER ──────────────────────────────────────────────────────
 export const deleteImage = async (imagePath) => {
+    if (!imagePath) return;
     try {
         if (IS_PRODUCTION) {
-            // Production: imagePath is a full Cloudinary URL
-            // Extract public_id: e.g. ecommerce/products/abc
-            const parts = imagePath.split('/');
-            const filename = parts[parts.length - 1].split('.')[0];
-            const folder = parts[parts.length - 2];
-            const publicId = `${folder}/${filename}`;
+            // Cloudinary URL format:
+            // https://res.cloudinary.com/<cloud>/image/upload/v<version>/<folder>/<subfolder>/<id>.<ext>
+            // We need everything after "upload/" (minus the version segment) as the public_id.
+            // Example: "ecommerce/products/abc123"
+            const uploadIndex = imagePath.indexOf('/upload/');
+            if (uploadIndex === -1) {
+                console.warn('deleteImage: unexpected Cloudinary URL format:', imagePath);
+                return;
+            }
+
+            // Grab everything after "/upload/"
+            let afterUpload = imagePath.slice(uploadIndex + 8); // len('/upload/') = 8
+
+            // Strip optional version segment like "v1234567890/"
+            afterUpload = afterUpload.replace(/^v\d+\//, '');
+
+            // Strip file extension
+            const publicId = afterUpload.replace(/\.[^/.]+$/, '');
+
             await cloudinary.uploader.destroy(publicId);
         } else {
             // Development: imagePath is like /uploads/products/filename.jpg
-            // Resolve relative to the backend root (one level up from src/)
             const relativePath = imagePath.startsWith('/') ? imagePath.slice(1) : imagePath;
             const absolutePath = path.join(path.resolve(), relativePath);
             if (fs.existsSync(absolutePath)) {
