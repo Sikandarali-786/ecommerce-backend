@@ -1,6 +1,11 @@
 import Order from "../models/order.model.js";
 import Cart from "../models/cart.model.js";
 import Product from "../models/product.model.js";
+import User from "../models/user.model.js";
+import {
+    sendOrderConfirmationEmail,
+    sendOrderStatusEmail,
+} from "../utils/email.js";
 
 // Create new order (COD)
 export const createOrder = async (req, res) => {
@@ -124,6 +129,11 @@ export const createOrder = async (req, res) => {
         );
 
         await order.populate("items.product");
+
+        // Send order confirmation email — fire and forget
+        User.findById(req.user._id).select("name email").then(user => {
+            if (user) sendOrderConfirmationEmail(user, order).catch(() => {});
+        }).catch(() => {});
 
         res.status(201).json({
             success: true,
@@ -256,6 +266,15 @@ export const updateOrderStatus = async (req, res) => {
         await order.save();
         await order.populate("items.product");
         await order.populate("user", "name email");
+
+        // Send status update email for meaningful status changes
+        const notifyStatuses = ["Confirmed", "Shipped", "Delivered", "Cancelled"];
+        if (orderStatus && notifyStatuses.includes(orderStatus) && orderStatus !== previousStatus) {
+            const user = order.user;
+            if (user && user.email) {
+                sendOrderStatusEmail(user, order, orderStatus).catch(() => {});
+            }
+        }
 
         res.status(200).json({
             success: true,

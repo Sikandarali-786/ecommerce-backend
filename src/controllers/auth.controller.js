@@ -1,6 +1,10 @@
 import User from "../models/user.model.js"
 import jwt from "jsonwebtoken"
 import crypto from "crypto"
+import {
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+} from "../utils/email.js"
 
 const generateToken = (id)=>{
     return jwt.sign({id}, process.env.JWT_SECRET, {
@@ -36,6 +40,9 @@ export const registerUser = async (req, res) => {
     });
 
     const safeUser = await User.findById(user._id).select("-password");
+
+    // Send welcome email — fire and forget, never blocks the response
+    sendWelcomeEmail(safeUser).catch(() => {});
 
     res.status(201).json({
       success: true,
@@ -206,15 +213,12 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
     await user.save();
 
-    // ── In production: send email with this link ───────────────────────────
-    // const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${rawToken}`;
-    // await sendEmail({ to: user.email, subject: "Password Reset", html: ... });
+    // Send password reset email
+    sendPasswordResetEmail(user, rawToken).catch(() => {});
 
     res.status(200).json({
       success: true,
       message: genericMsg,
-      // Returned for dev / demo — remove in production once email is wired
-      devResetToken: rawToken,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
