@@ -6,6 +6,9 @@ import {
   sendPasswordResetEmail,
 } from "../utils/email.js"
 
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 60 * 60 * 1000; // 1 hour
+
 const generateToken = (id)=>{
     return jwt.sign({id}, process.env.JWT_SECRET, {
         expiresIn : "7d"
@@ -152,20 +155,55 @@ export const loginUser = async (req, res) => {
       });
     }
 
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been blocked. Please contact support.",
+      });
+    }
+
+    if (user.lockUntil && user.lockUntil > Date.now()) {
+      const minutesLeft = Math.ceil((user.lockUntil.getTime() - Date.now()) / (60 * 1000));
+      return res.status(403).json({
+        success: false,
+        message: `Your account is temporarily locked due to too many failed login attempts. Try again in ${minutesLeft} minute${minutesLeft === 1 ? "" : "s"}.`,
+      });
+    }
+
+    if (user.lockUntil && user.lockUntil <= Date.now()) {
+      user.loginAttempts = 0;
+      user.lockUntil = null;
+      await user.save();
+    }
+
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+
+      if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+        user.lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
+        user.loginAttempts = 0;
+        await user.save();
+
+        return res.status(403).json({
+          success: false,
+          message: "Too many failed login attempts. Your account has been locked for 1 hour.",
+        });
+      }
+
+      await user.save();
+
       return res.status(400).json({
         success: false,
         message: "Invalid credentials",
       });
     }
 
-    if (user.isBlocked) {
-      return res.status(403).json({
-        success: false,
-        message: "Your account has been blocked. Please contact support.",
-      });
+    if (user.loginAttempts || user.lockUntil) {
+      user.loginAttempts = 0;
+      user.lockUntil = null;
+      await user.save();
     }
 
     const safeUser = await User.findById(user._id).select("-password");

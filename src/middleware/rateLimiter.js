@@ -8,10 +8,18 @@ const handler = (req, res) => {
     });
 };
 
-// ── Login: 10 attempts per 15 minutes per IP ──────────────────────────────────
+// ── Login: 10 attempts per 15 minutes per email ───────────────────────────────
 export const loginLimiter = rateLimit({
     windowMs:         15 * 60 * 1000, // 15 minutes
     max:              10,
+    keyGenerator: (req) => {
+        const email = req.body?.email;
+        if (typeof email === "string" && email.trim()) {
+            return email.trim().toLowerCase();
+        }
+
+        return req.ip;
+    },
     standardHeaders:  true,            // Return rate limit info in RateLimit-* headers
     legacyHeaders:    false,
     handler,

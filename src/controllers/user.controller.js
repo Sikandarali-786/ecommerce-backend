@@ -109,6 +109,8 @@ export const toggleUserStatus = async (req, res) => {
         
         // Toggle isBlocked status
         user.isBlocked = !user.isBlocked;
+        user.loginAttempts = 0;
+        user.lockUntil = null;
         await user.save();
         
         res.status(200).json({
