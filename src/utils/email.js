@@ -53,14 +53,14 @@ const baseTemplate = (content) => `
 <body>
   <div class="wrap">
     <div class="header">
-      <h1>Imtiaz Bikerz Studio</h1>
+      <h1>Afzal Bikerz Studio</h1>
       <p>Pakistan's #1 Motorcycle Parts Store</p>
     </div>
     <div class="body">${content}</div>
     <div class="footer">
-      <p>© 2026 Imtiaz Bikerz Studio · K-Block Street#3, Motorcycle Market, Attock</p>
+      <p>© 2026 Afzal Bikerz Studio · K-Block Street#3, Motorcycle Market, Attock</p>
       <p><a href="tel:03335959318">03335959318</a> &nbsp;|&nbsp;
-         <a href="mailto:imtiazbikerzstudio@gmail.com">imtiazbikerzstudio@gmail.com</a></p>
+         <a href="mailto:Afzalbikerzstudio@gmail.com">Afzalbikerzstudio@gmail.com</a></p>
     </div>
   </div>
 </body>
@@ -69,7 +69,7 @@ const baseTemplate = (content) => `
 // ── Template: Password Reset ───────────────────────────────────────────────────
 const passwordResetTemplate = ({ name, resetUrl }) => baseTemplate(`
   <p>Hi <strong>${name}</strong>,</p>
-  <p>We received a request to reset the password for your Imtiaz Bikerz Studio account.</p>
+  <p>We received a request to reset the password for your Afzal Bikerz Studio account.</p>
   <p>Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>
   <div style="text-align:center;">
     <a href="${resetUrl}" class="btn">Reset My Password</a>
@@ -86,7 +86,7 @@ const passwordResetTemplate = ({ name, resetUrl }) => baseTemplate(`
 // ── Template: Welcome / Registration ─────────────────────────────────────────
 const welcomeTemplate = ({ name }) => baseTemplate(`
   <p>Hi <strong>${name}</strong> 👋</p>
-  <p>Welcome to <strong>Imtiaz Bikerz Studio</strong> — Pakistan's #1 Motorcycle Parts Store!</p>
+  <p>Welcome to <strong>Afzal Bikerz Studio</strong> — Pakistan's #1 Motorcycle Parts Store!</p>
   <p>Your account has been created successfully. You can now:</p>
   <ul style="font-size:15px;line-height:1.9;color:#444;">
     <li>Browse hundreds of motorcycle parts</li>
@@ -189,6 +189,74 @@ const orderStatusTemplate = ({ name, order, newStatus }) => {
     `);
 };
 
+// ── Template: Admin New Order Notification ──────────────────────────────────
+const adminNewOrderTemplate = ({ order, customerName }) => {
+    const itemsHtml = order.items.map(item => `
+      <div class="item-row">
+        <span class="item-name">${item.title} × ${item.quantity}</span>
+        <span class="item-price">PKR ${(item.price * item.quantity).toLocaleString()}</span>
+      </div>`).join('');
+
+    const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/orders`;
+
+    return baseTemplate(`
+      <p>Hi Admin,</p>
+      <p>A new order has been placed by <strong>${customerName}</strong>.</p>
+
+      <div style="background:#fafafa;border-radius:8px;padding:20px;margin:16px 0;">
+        <p style="margin:0 0 4px;font-size:13px;color:#888;">ORDER ID</p>
+        <p style="margin:0;font-size:14px;font-weight:700;color:#222;font-family:monospace;">
+          #${order._id.toString().slice(-8).toUpperCase()}
+        </p>
+      </div>
+
+      <p style="font-weight:600;margin-bottom:8px;">Items Ordered</p>
+      ${itemsHtml}
+
+      <hr class="divider" />
+      <div class="item-row">
+        <span class="item-name">Total</span>
+        <span>PKR ${order.total.toLocaleString()}</span>
+      </div>
+      <div class="item-row">
+        <span class="item-name">Payment Method</span>
+        <span>${order.paymentMethod}</span>
+      </div>
+      <div class="item-row">
+        <span class="item-name">Payment Status</span>
+        <span>${order.paymentStatus}</span>
+      </div>
+
+      <div style="text-align:center;">
+        <a href="${orderUrl}" class="btn">Open Admin Orders</a>
+      </div>
+    `);
+};
+
+// ── Template: Admin Low Stock Notification ─────────────────────────────────
+const lowStockTemplate = ({ product, remainingStock, threshold }) => baseTemplate(`
+  <p>Hi Admin,</p>
+  <p><strong>${product.title}</strong> is running low on stock.</p>
+
+  <div style="background:#fafafa;border-radius:8px;padding:20px;margin:16px 0;">
+    <p style="margin:0 0 4px;font-size:13px;color:#888;">PRODUCT</p>
+    <p style="margin:0;font-size:16px;font-weight:700;color:#222;">${product.title}</p>
+  </div>
+
+  <div class="item-row">
+    <span class="item-name">Remaining Stock</span>
+    <span class="item-price">${remainingStock}</span>
+  </div>
+  <div class="item-row">
+    <span class="item-name">Low Stock Threshold</span>
+    <span class="item-price">${threshold}</span>
+  </div>
+
+  <p style="font-size:13px;color:#888;margin-top:18px;">
+    Please restock this item soon to avoid stockouts.
+  </p>
+`);
+
 // ── Core sendEmail function ───────────────────────────────────────────────────
 export const sendEmail = async ({ to, subject, html }) => {
     // Skip silently if email credentials are not configured
@@ -199,7 +267,7 @@ export const sendEmail = async ({ to, subject, html }) => {
 
     try {
         const transporter = createTransporter();
-        const from = process.env.EMAIL_FROM || `Imtiaz Bikerz Studio <${process.env.EMAIL_USER}>`;
+        const from = process.env.EMAIL_FROM || `Afzal Bikerz Studio <${process.env.EMAIL_USER}>`;
 
         const info = await transporter.sendMail({ from, to, subject, html });
         console.log(`✉️  Email sent to ${to} — Message ID: ${info.messageId}`);
@@ -213,7 +281,7 @@ export const sendEmail = async ({ to, subject, html }) => {
 export const sendWelcomeEmail = (user) =>
     sendEmail({
         to:      user.email,
-        subject: "Welcome to Imtiaz Bikerz Studio 🏍️",
+        subject: "Welcome to Afzal Bikerz Studio 🏍️",
         html:    welcomeTemplate({ name: user.name }),
     });
 
@@ -221,7 +289,7 @@ export const sendPasswordResetEmail = (user, rawToken) => {
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${rawToken}`;
     return sendEmail({
         to:      user.email,
-        subject: "Reset Your Password — Imtiaz Bikerz Studio",
+        subject: "Reset Your Password — Afzal Bikerz Studio",
         html:    passwordResetTemplate({ name: user.name, resetUrl }),
     });
 };
@@ -229,13 +297,58 @@ export const sendPasswordResetEmail = (user, rawToken) => {
 export const sendOrderConfirmationEmail = (user, order) =>
     sendEmail({
         to:      user.email,
-        subject: `Order Confirmed #${order._id.toString().slice(-8).toUpperCase()} — Imtiaz Bikerz Studio`,
+        subject: `Order Confirmed #${order._id.toString().slice(-8).toUpperCase()} — Afzal Bikerz Studio`,
         html:    orderConfirmationTemplate({ name: user.name, order }),
     });
 
 export const sendOrderStatusEmail = (user, order, newStatus) =>
     sendEmail({
         to:      user.email,
-        subject: `Your Order is ${newStatus} — Imtiaz Bikerz Studio`,
+        subject: `Your Order is ${newStatus} — Afzal Bikerz Studio`,
         html:    orderStatusTemplate({ name: user.name, order, newStatus }),
     });
+
+const parseAdminEmails = () =>
+    (process.env.ADMIN_EMAIL || "")
+        .split(",")
+        .map(email => email.trim())
+        .filter(Boolean);
+
+export const sendAdminNewOrderEmail = (order, user) => {
+    const admins = parseAdminEmails();
+    if (admins.length === 0) return Promise.resolve();
+
+    return Promise.all(
+        admins.map(adminEmail =>
+            sendEmail({
+                to: adminEmail,
+                subject: `New Order Received #${order._id.toString().slice(-8).toUpperCase()} — Afzal Bikerz Studio`,
+                html: adminNewOrderTemplate({
+                    order,
+                    customerName: user?.name || user?.email || "Customer",
+                }),
+            }),
+        ),
+    );
+};
+
+export const sendAdminLowStockEmail = (product, remainingStock) => {
+    const admins = parseAdminEmails();
+    if (admins.length === 0) return Promise.resolve();
+
+    const threshold = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
+
+    return Promise.all(
+        admins.map(adminEmail =>
+            sendEmail({
+                to: adminEmail,
+                subject: `Low Stock Alert: ${product.title} — Afzal Bikerz Studio`,
+                html: lowStockTemplate({
+                    product,
+                    remainingStock,
+                    threshold,
+                }),
+            }),
+        ),
+    );
+};

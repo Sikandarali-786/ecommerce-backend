@@ -1,7 +1,11 @@
 import Product from "../models/product.model.js";
 import { deleteImage } from "../utils/upload.js";
+import {
+    sendAdminLowStockEmail,
+} from "../utils/email.js";
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const LOW_STOCK_THRESHOLD = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
 
 // Helper: build image path from uploaded file
 const getImagePath = (file) => {
@@ -49,6 +53,10 @@ export const createProduct = async (req, res) => {
         });
 
         await product.populate("category", "name slug");
+
+        if (product.stock <= LOW_STOCK_THRESHOLD) {
+            sendAdminLowStockEmail(product, product.stock).catch(() => {});
+        }
 
         res.status(201).json({
             success: true,
@@ -182,6 +190,7 @@ export const updateProduct = async (req, res) => {
             });
         }
 
+        const previousStock = product.stock;
         const { title, description, price, stock, category, removeImages } = req.body;
 
         // Handle image removal (array of URLs to delete)
@@ -208,6 +217,14 @@ export const updateProduct = async (req, res) => {
 
         await product.save();
         await product.populate("category", "name slug");
+
+        if (
+            typeof stock !== "undefined" &&
+            Number(stock) <= LOW_STOCK_THRESHOLD &&
+            previousStock > LOW_STOCK_THRESHOLD
+        ) {
+            sendAdminLowStockEmail(product, product.stock).catch(() => {});
+        }
 
         res.status(200).json({
             success: true,

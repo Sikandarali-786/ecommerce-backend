@@ -4,8 +4,11 @@ import Product from "../models/product.model.js";
 import User from "../models/user.model.js";
 import {
     sendOrderConfirmationEmail,
+    sendAdminNewOrderEmail,
+    sendAdminLowStockEmail,
     sendOrderStatusEmail,
 } from "../utils/email.js";
+const LOW_STOCK_THRESHOLD = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
 
 // Create new order (COD)
 export const createOrder = async (req, res) => {
@@ -98,6 +101,10 @@ export const createOrder = async (req, res) => {
             }
 
             decremented.push({ id: product._id, qty: quantity });
+
+            if (product.stock > LOW_STOCK_THRESHOLD && updated.stock <= LOW_STOCK_THRESHOLD) {
+                sendAdminLowStockEmail(updated, updated.stock).catch(() => {});
+            }
         }
 
         // ── Phase 3: build order items from fetched product docs ──────────
@@ -132,7 +139,10 @@ export const createOrder = async (req, res) => {
 
         // Send order confirmation email — fire and forget
         User.findById(req.user._id).select("name email").then(user => {
-            if (user) sendOrderConfirmationEmail(user, order).catch(() => {});
+            if (!user) return;
+
+            sendOrderConfirmationEmail(user, order).catch(() => {});
+            sendAdminNewOrderEmail(order, user).catch(() => {});
         }).catch(() => {});
 
         res.status(201).json({
