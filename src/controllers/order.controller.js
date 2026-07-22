@@ -214,17 +214,85 @@ export const getOrderById = async (req, res) => {
 // Get all orders (Admin only)
 export const getAllOrders = async (req, res) => {
     try {
-        const orders = await Order.find()
-            .populate('items.product')
-            .populate('user', 'name email')
-            .sort({ createdAt: -1 });
+        const {
+            search,
+            status,
+            dateFrom,
+            dateTo,
+            page = 1,
+            limit = 20,
+        } = req.query;
 
-        const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+        const query = {};
+
+        // Status filter
+        if (status && status !== 'all') {
+            query.orderStatus = status;
+        }
+
+        // Date range filter (orderDate)
+        if (dateFrom || dateTo) {
+            query.orderDate = {};
+            if (dateFrom) query.orderDate.$gte = new Date(dateFrom);
+            if (dateTo) query.orderDate.$lte = new Date(dateTo);
+        }
+
+        // If search provided, try to match by order id tail or user name/email
+        let userIds = null;
+        if (search?.trim()) {
+            const s = search.trim();
+
+            // If looks like an object id tail (e.g. last 6-8 chars), allow regex on _id
+            const idRegex = new RegExp(s, 'i');
+
+            // Find users with matching name or email
+            const matchedUsers = await User.find({
+                $or: [
+                    { name:  { $regex: s, $options: 'i' } },
+                    { email: { $regex: s, $options: 'i' } },
+                ],
+            }).select('_id');
+
+            userIds = matchedUsers.map(u => u._id);
+
+            query.$or = [
+                { _id: { $regex: idRegex } },
+            ];
+
+            if (userIds.length > 0) query.$or.push({ user: { $in: userIds } });
+        }
+
+        // Pagination
+        const pageNum  = Math.max(1, parseInt(page, 10) || 1);
+        const limitNum = Math.min(200, Math.max(1, parseInt(limit, 10) || 20));
+        const skip     = (pageNum - 1) * limitNum;
+
+        const [orders, total] = await Promise.all([
+            Order.find(query)
+                .populate('items.product')
+                .populate('user', 'name email')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum),
+            Order.countDocuments(query),
+        ]);
+
+        const totalRevenueAgg = await Order.aggregate([
+            { $match: query },
+            { $group: { _id: null, total: { $sum: '$total' } } },
+        ]);
+        const totalRevenue = totalRevenueAgg[0]?.total ?? 0;
 
         res.status(200).json({
             success: true,
             orders,
-            totalOrders: orders.length,
+            pagination: {
+                total,
+                page: pageNum,
+                limit: limitNum,
+                totalPages: Math.ceil(total / limitNum),
+                hasMore: pageNum < Math.ceil(total / limitNum),
+            },
             totalRevenue,
         });
     } catch (error) {
