@@ -53,14 +53,14 @@ const baseTemplate = (content) => `
 <body>
   <div class="wrap">
     <div class="header">
-      <h1>Afzal Bikerz Studio</h1>
+      <h1>Afzal Bikerz Store</h1>
       <p>Pakistan's #1 Motorcycle Parts Store</p>
     </div>
     <div class="body">${content}</div>
     <div class="footer">
-      <p>© 2026 Afzal Bikerz Studio · K-Block Street#3, Motorcycle Market, Attock</p>
-      <p><a href="tel:03335959318">03335959318</a> &nbsp;|&nbsp;
-         <a href="mailto:Afzalbikerzstudio@gmail.com">Afzalbikerzstudio@gmail.com</a></p>
+      <p>© 2026 Afzal Bikerz Store · Husain a gahi Market, Multan</p>
+      <p><a href="tel:03048405899">03048405899</a> &nbsp;|&nbsp;
+         <a href="mailto:Afzalbikerzstore@gmail.com">Afzalbikerzstore@gmail.com</a></p>
     </div>
   </div>
 </body>
@@ -259,21 +259,24 @@ const lowStockTemplate = ({ product, remainingStock, threshold }) => baseTemplat
 
 // ── Core sendEmail function ───────────────────────────────────────────────────
 export const sendEmail = async ({ to, subject, html }) => {
-    // Skip silently if email credentials are not configured
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.warn("⚠️  Email credentials not set — skipping email to:", to);
-        return;
-    }
+  // Diagnostic: log that sendEmail was invoked
+  console.log(`⏳ sendEmail invoked -> to: ${to} subject: ${subject}`);
+
+  // Skip silently if email credentials are not configured
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn("⚠️  Email credentials not set — skipping email to:", to);
+    return;
+  }
 
     try {
         const transporter = createTransporter();
         const from = process.env.EMAIL_FROM || `Afzal Bikerz Studio <${process.env.EMAIL_USER}>`;
 
         const info = await transporter.sendMail({ from, to, subject, html });
-        console.log(`✉️  Email sent to ${to} — Message ID: ${info.messageId}`);
+    console.log(`✉️  Email sent to ${to} — Message ID: ${info.messageId}`);
     } catch (err) {
-        // Log but never crash the request if email fails
-        console.error("❌  Email send failed:", err.message);
+    // Log full error but never crash the request if email fails
+    console.error("❌  Email send failed:", err);
     }
 };
 
@@ -316,6 +319,7 @@ const parseAdminEmails = () =>
 
 export const sendAdminNewOrderEmail = (order, user) => {
     const admins = parseAdminEmails();
+  console.log('📣 Admin notification recipients:', admins);
     if (admins.length === 0) return Promise.resolve();
 
     return Promise.all(

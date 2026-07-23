@@ -93,7 +93,7 @@ async function testGetProducts() {
 
 async function testAddToCart() {
   console.log('\n🛒 Testing Add to Cart...');
-  const result = await makeRequest('/cart', 'POST', {
+  const result = await makeRequest('/cart/add', 'POST', {
     productId: productId,
     quantity: 2
   }, authToken);
@@ -122,7 +122,7 @@ async function testGetCart() {
 
 async function testUpdateCartQuantity() {
   console.log('\n🛒 Testing Update Cart Quantity...');
-  const result = await makeRequest('/cart', 'PUT', {
+  const result = await makeRequest('/cart/update', 'PUT', {
     productId: productId,
     quantity: 3
   }, authToken);
@@ -138,7 +138,7 @@ async function testUpdateCartQuantity() {
 
 async function testCreateOrder() {
   console.log('\n📦 Testing Create Order...');
-  const result = await makeRequest('/orders', 'POST', {
+  const result = await makeRequest('/orders/create', 'POST', {
     items: [
       {
         product: productId,
@@ -213,7 +213,7 @@ async function testCancelOrder() {
 
 async function testAddToWishlist() {
   console.log('\n❤️ Testing Add to Wishlist...');
-  const result = await makeRequest('/wishlist', 'POST', {
+  const result = await makeRequest('/wishlist/add', 'POST', {
     productId: productId
   }, authToken);
   
