@@ -5,6 +5,7 @@ import {
     updateCategory,
     deleteCategory,
 } from "../controllers/category.controller.js";
+import { upload } from "../utils/upload.js";
 
 import {
     protect,
@@ -14,8 +15,8 @@ import {
 const router = express.Router();
 
 router.get("/", getAllCategories);
-router.post("/create", protect, adminOnly, createCategory);
-router.put("/:id", protect, adminOnly, updateCategory);
+router.post("/create", protect, adminOnly, upload.single('image'), createCategory);
+router.put("/:id", protect, adminOnly, upload.single('image'), updateCategory);
 router.delete("/:id", protect, adminOnly, deleteCategory);
 
 export default router;

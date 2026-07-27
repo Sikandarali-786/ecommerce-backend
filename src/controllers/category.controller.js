@@ -1,9 +1,21 @@
 import Category from "../models/category.model.js";
 import Product from "../models/product.model.js";
+import { deleteImage } from "../utils/upload.js";
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+const getImagePath = (file) => {
+    if (!file) return '';
+    if (IS_PRODUCTION) {
+        return file.path;
+    }
+    return `/uploads/products/${file.filename}`;
+};
 
 export const createCategory = async (req, res) => {
     try {
         const { name, slug } = req.body;
+        const image = req.file ? getImagePath(req.file) : '';
 
         if (!name || !slug) {
             return res.status(400).json({
@@ -26,6 +38,7 @@ export const createCategory = async (req, res) => {
         const category = await Category.create({
             name,
             slug,
+            image,
         });
 
         res.status(201).json({
@@ -62,7 +75,7 @@ export const getAllCategories = async (req, res) => {
 // update category (admin only)
 export const updateCategory = async (req, res) => {
     try {
-        const { name, slug } = req.body;
+        const { name, slug, image } = req.body;
 
         if (!name || !slug) {
             return res.status(400).json({
@@ -94,6 +107,12 @@ export const updateCategory = async (req, res) => {
 
         category.name = name;
         category.slug = slug;
+
+        if (req.file) {
+            await deleteImage(category.image);
+            category.image = getImagePath(req.file);
+        }
+
         await category.save();
 
         res.status(200).json({
