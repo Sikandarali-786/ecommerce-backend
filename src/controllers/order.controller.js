@@ -2,6 +2,7 @@ import Order from "../models/order.model.js";
 import Cart from "../models/cart.model.js";
 import Product from "../models/product.model.js";
 import User from "../models/user.model.js";
+import mongoose from "mongoose";
 import {
     sendOrderConfirmationEmail,
     sendAdminNewOrderEmail,
@@ -12,95 +13,69 @@ const LOW_STOCK_THRESHOLD = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
 
 // Create new order (COD)
 export const createOrder = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
         const {
             items,
             shippingInfo,
             paymentMethod = "COD",
-            subtotal,
-            shippingCost,
-            tax,
-            total,
+            shippingCost: inputShippingCost = 0,
+            tax: inputTax = 0,
         } = req.body;
 
         // ── Basic validation ──────────────────────────────────────────────
         if (!items || items.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: "No items in order",
-            });
+            throw new Error("No items in order");
         }
 
         if (!shippingInfo) {
-            return res.status(400).json({
-                success: false,
-                message: "Shipping information is required",
-            });
+            throw new Error("Shipping information is required");
+        }
+
+        const requiredShippingFields = ["fullName", "email", "phone", "address", "city", "state", "country"];
+        for (const field of requiredShippingFields) {
+            if (!shippingInfo[field] || typeof shippingInfo[field] !== 'string' || !shippingInfo[field].trim()) {
+                throw new Error(`Shipping information is missing or invalid field: ${field}`);
+            }
         }
 
         // ── Phase 1: validate all products exist and have enough stock ────
-        // Do this BEFORE touching any stock so we never partially decrement
         const productDocs = [];
         for (const item of items) {
             if (!item.product || item.quantity < 1) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Invalid item in order",
-                });
+                throw new Error("Invalid item in order");
             }
 
-            const product = await Product.findById(item.product);
+            const product = await Product.findById(item.product).session(session);
 
             if (!product) {
-                return res.status(404).json({
-                    success: false,
-                    message: `Product not found`,
-                });
+                throw new Error("Product not found");
             }
 
             if (product.stock < item.quantity) {
-                return res.status(400).json({
-                    success: false,
-                    message: `"${product.title}" only has ${product.stock} unit${
-                        product.stock === 1 ? '' : 's'
-                    } left in stock`,
-                });
+                throw new Error(`"${product.title}" only has ${product.stock} unit${product.stock === 1 ? '' : 's'} left in stock`);
             }
 
             productDocs.push({ product, quantity: item.quantity });
         }
 
         // ── Phase 2: atomically decrement stock for each item ─────────────
-        // Uses findOneAndUpdate with $inc + $gte condition — if the document
-        // no longer satisfies stock >= quantity (race condition), the update
-        // returns null and we roll back already-decremented items.
-        const decremented = [];
         for (const { product, quantity } of productDocs) {
             const updated = await Product.findOneAndUpdate(
                 {
-                    _id:   product._id,
+                    _id: product._id,
                     stock: { $gte: quantity }, // atomic guard
                 },
                 { $inc: { stock: -quantity } },
-                { new: true },
+                { new: true, session }
             );
 
             if (!updated) {
-                // Roll back all decrements that already succeeded
-                if (decremented.length > 0) {
-                    await Promise.all(
-                        decremented.map(({ id, qty }) =>
-                            Product.findByIdAndUpdate(id, { $inc: { stock: qty } }),
-                        ),
-                    );
-                }
-                return res.status(400).json({
-                    success: false,
-                    message: `"${product.title}" just sold out. Please update your cart.`,
-                });
+                // The abortTransaction will automatically rollback any previous successful decrements
+                throw new Error(`"${product.title}" just sold out. Please update your cart.`);
             }
-
-            decremented.push({ id: product._id, qty: quantity });
 
             if (product.stock > LOW_STOCK_THRESHOLD && updated.stock <= LOW_STOCK_THRESHOLD) {
                 sendAdminLowStockEmail(updated, updated.stock).catch(() => {});
@@ -108,39 +83,51 @@ export const createOrder = async (req, res) => {
         }
 
         // ── Phase 3: build order items from fetched product docs ──────────
-        const orderItems = productDocs.map(({ product, quantity }) => ({
-            product:  product._id,
-            title:    product.title,
-            price:    product.price,
-            quantity,
-            image:    product.images?.[0] || "",
-        }));
+        let calculatedSubtotal = 0;
+        const orderItems = productDocs.map(({ product, quantity }) => {
+            calculatedSubtotal += product.price * quantity;
+            return {
+                product:  product._id,
+                title:    product.title,
+                price:    product.price,
+                quantity,
+                image:    product.images?.[0] || "",
+            };
+        });
+
+        const finalShippingCost = Number(inputShippingCost) || 0;
+        const finalTax = Number(inputTax) || 0;
+        const calculatedTotal = calculatedSubtotal + finalShippingCost + finalTax;
 
         // ── Phase 4: create the order ──────────────────────────────────────
-        const order = await Order.create({
+        const [order] = await Order.create([{
             user: req.user._id,
             items: orderItems,
             shippingInfo,
             paymentMethod,
             paymentStatus: paymentMethod === "COD" ? "Pending" : "Paid",
-            subtotal,
-            shippingCost,
-            tax,
-            total,
-        });
+            subtotal: calculatedSubtotal,
+            shippingCost: finalShippingCost,
+            tax: finalTax,
+            total: calculatedTotal,
+        }], { session });
 
         // Clear user's cart after successful order
         await Cart.findOneAndUpdate(
             { user: req.user._id },
             { items: [] },
+            { session }
         );
+
+        // Commit transaction BEFORE sending emails or responding
+        await session.commitTransaction();
+        session.endSession();
 
         await order.populate("items.product");
 
         // Send order confirmation email — fire and forget
         User.findById(req.user._id).select("name email").then(user => {
             if (!user) return;
-
             sendOrderConfirmationEmail(user, order).catch(() => {});
             sendAdminNewOrderEmail(order, user).catch(() => {});
         }).catch(() => {});
@@ -151,7 +138,18 @@ export const createOrder = async (req, res) => {
             order,
         });
     } catch (error) {
-        res.status(500).json({
+        await session.abortTransaction();
+        session.endSession();
+        
+        // If it's a validation error (like sold out, or missing info), return 400
+        const isClientError = error.message.includes('sold out') || 
+                              error.message.includes('No items') || 
+                              error.message.includes('Shipping information') || 
+                              error.message.includes('Invalid item') || 
+                              error.message.includes('not found') || 
+                              error.message.includes('only has');
+                              
+        res.status(isClientError ? 400 : 500).json({
             success: false,
             message: error.message,
         });
