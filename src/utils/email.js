@@ -2,15 +2,15 @@ import nodemailer from "nodemailer";
 
 // ── Create reusable transporter ───────────────────────────────────────────────
 const createTransporter = () => {
-    return nodemailer.createTransport({
-        host:   process.env.EMAIL_HOST   || "smtp.gmail.com",
-        port:   Number(process.env.EMAIL_PORT) || 587,
-        secure: false, // true for port 465, false for 587 (STARTTLS)
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-        },
-    });
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || "smtp.gmail.com",
+    port: Number(process.env.EMAIL_PORT) || 587,
+    secure: false, // true for port 465, false for 587 (STARTTLS)
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 };
 
 // ── Base HTML wrapper ─────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ const baseTemplate = (content) => `
 // ── Template: Password Reset ───────────────────────────────────────────────────
 const passwordResetTemplate = ({ name, resetUrl }) => baseTemplate(`
   <p>Hi <strong>${name}</strong>,</p>
-  <p>We received a request to reset the password for your Afzal Bikerz Studio account.</p>
+  <p>We received a request to reset the password for your Afzal Bikerz Store account.</p>
   <p>Click the button below to set a new password. This link expires in <strong>1 hour</strong>.</p>
   <div style="text-align:center;">
     <a href="${resetUrl}" class="btn">Reset My Password</a>
@@ -86,7 +86,7 @@ const passwordResetTemplate = ({ name, resetUrl }) => baseTemplate(`
 // ── Template: Welcome / Registration ─────────────────────────────────────────
 const welcomeTemplate = ({ name }) => baseTemplate(`
   <p>Hi <strong>${name}</strong> 👋</p>
-  <p>Welcome to <strong>Afzal Bikerz Studio</strong> — Pakistan's #1 Motorcycle Parts Store!</p>
+  <p>Welcome to <strong>Afzal Bikerz Store</strong> — Pakistan's #1 Motorcycle Parts Store!</p>
   <p>Your account has been created successfully. You can now:</p>
   <ul style="font-size:15px;line-height:1.9;color:#444;">
     <li>Browse hundreds of motorcycle parts</li>
@@ -102,15 +102,15 @@ const welcomeTemplate = ({ name }) => baseTemplate(`
 
 // ── Template: Order Confirmation ──────────────────────────────────────────────
 const orderConfirmationTemplate = ({ name, order }) => {
-    const itemsHtml = order.items.map(item => `
+  const itemsHtml = order.items.map(item => `
       <div class="item-row">
         <span class="item-name">${item.title} × ${item.quantity}</span>
         <span class="item-price">PKR ${(item.price * item.quantity).toLocaleString()}</span>
       </div>`).join('');
 
-    const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders`;
+  const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders`;
 
-    return baseTemplate(`
+  return baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
       <p>🎉 Thank you for your order! We've received it and it's now being processed.</p>
 
@@ -160,17 +160,17 @@ const orderConfirmationTemplate = ({ name, order }) => {
 
 // ── Template: Order Status Update ────────────────────────────────────────────
 const orderStatusTemplate = ({ name, order, newStatus }) => {
-    const badgeClass = `badge badge-${newStatus.toLowerCase()}`;
-    const messages = {
-        Confirmed:  "Great news! Your order has been confirmed and is being prepared.",
-        Shipped:    "Your order is on its way! 🚚 Expect delivery within 2–5 business days.",
-        Delivered:  "Your order has been delivered. We hope you love your new motorcycle parts! 🎉",
-        Cancelled:  "Your order has been cancelled. If you paid online, a refund will be processed shortly.",
-    };
+  const badgeClass = `badge badge-${newStatus.toLowerCase()}`;
+  const messages = {
+    Confirmed: "Great news! Your order has been confirmed and is being prepared.",
+    Shipped: "Your order is on its way! 🚚 Expect delivery within 2–5 business days.",
+    Delivered: "Your order has been delivered. We hope you love your new motorcycle parts! 🎉",
+    Cancelled: "Your order has been cancelled. If you paid online, a refund will be processed shortly.",
+  };
 
-    const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders`;
+  const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/orders`;
 
-    return baseTemplate(`
+  return baseTemplate(`
       <p>Hi <strong>${name}</strong>,</p>
       <p>${messages[newStatus] || `Your order status has been updated.`}</p>
 
@@ -191,15 +191,15 @@ const orderStatusTemplate = ({ name, order, newStatus }) => {
 
 // ── Template: Admin New Order Notification ──────────────────────────────────
 const adminNewOrderTemplate = ({ order, customerName }) => {
-    const itemsHtml = order.items.map(item => `
+  const itemsHtml = order.items.map(item => `
       <div class="item-row">
         <span class="item-name">${item.title} × ${item.quantity}</span>
         <span class="item-price">PKR ${(item.price * item.quantity).toLocaleString()}</span>
       </div>`).join('');
 
-    const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/orders`;
+  const orderUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/orders`;
 
-    return baseTemplate(`
+  return baseTemplate(`
       <p>Hi Admin,</p>
       <p>A new order has been placed by <strong>${customerName}</strong>.</p>
 
@@ -268,91 +268,91 @@ export const sendEmail = async ({ to, subject, html }) => {
     return;
   }
 
-    try {
-        const transporter = createTransporter();
-        const from = process.env.EMAIL_FROM || `Afzal Bikerz Studio <${process.env.EMAIL_USER}>`;
+  try {
+    const transporter = createTransporter();
+    const from = process.env.EMAIL_FROM || `Afzal Bikerz Store <${process.env.EMAIL_USER}>`;
 
-        const info = await transporter.sendMail({ from, to, subject, html });
+    const info = await transporter.sendMail({ from, to, subject, html });
     console.log(`✉️  Email sent to ${to} — Message ID: ${info.messageId}`);
-    } catch (err) {
+  } catch (err) {
     // Log full error but never crash the request if email fails
     console.error("❌  Email send failed:", err);
-    }
+  }
 };
 
 // ── Named email senders ───────────────────────────────────────────────────────
 export const sendWelcomeEmail = (user) =>
-    sendEmail({
-        to:      user.email,
-        subject: "Welcome to Afzal Bikerz Studio 🏍️",
-        html:    welcomeTemplate({ name: user.name }),
-    });
+  sendEmail({
+    to: user.email,
+    subject: "Welcome to Afzal Bikerz Store 🏍️",
+    html: welcomeTemplate({ name: user.name }),
+  });
 
 export const sendPasswordResetEmail = (user, rawToken) => {
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${rawToken}`;
-    return sendEmail({
-        to:      user.email,
-        subject: "Reset Your Password — Afzal Bikerz Studio",
-        html:    passwordResetTemplate({ name: user.name, resetUrl }),
-    });
+  const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${rawToken}`;
+  return sendEmail({
+    to: user.email,
+    subject: "Reset Your Password — Afzal Bikerz Store",
+    html: passwordResetTemplate({ name: user.name, resetUrl }),
+  });
 };
 
 export const sendOrderConfirmationEmail = (user, order) =>
-    sendEmail({
-        to:      user.email,
-        subject: `Order Confirmed #${order._id.toString().slice(-8).toUpperCase()} — Afzal Bikerz Studio`,
-        html:    orderConfirmationTemplate({ name: user.name, order }),
-    });
+  sendEmail({
+    to: user.email,
+    subject: `Order Confirmed #${order._id.toString().slice(-8).toUpperCase()} — Afzal Bikerz Store`,
+    html: orderConfirmationTemplate({ name: user.name, order }),
+  });
 
 export const sendOrderStatusEmail = (user, order, newStatus) =>
-    sendEmail({
-        to:      user.email,
-        subject: `Your Order is ${newStatus} — Afzal Bikerz Studio`,
-        html:    orderStatusTemplate({ name: user.name, order, newStatus }),
-    });
+  sendEmail({
+    to: user.email,
+    subject: `Your Order is ${newStatus} — Afzal Bikerz Store`,
+    html: orderStatusTemplate({ name: user.name, order, newStatus }),
+  });
 
 const parseAdminEmails = () =>
-    (process.env.ADMIN_EMAIL || "")
-        .split(",")
-        .map(email => email.trim())
-        .filter(Boolean);
+  (process.env.ADMIN_EMAIL || "")
+    .split(",")
+    .map(email => email.trim())
+    .filter(Boolean);
 
 export const sendAdminNewOrderEmail = (order, user) => {
-    const admins = parseAdminEmails();
+  const admins = parseAdminEmails();
   console.log('📣 Admin notification recipients:', admins);
-    if (admins.length === 0) return Promise.resolve();
+  if (admins.length === 0) return Promise.resolve();
 
-    return Promise.all(
-        admins.map(adminEmail =>
-            sendEmail({
-                to: adminEmail,
-                subject: `New Order Received #${order._id.toString().slice(-8).toUpperCase()} — Afzal Bikerz Studio`,
-                html: adminNewOrderTemplate({
-                    order,
-                    customerName: user?.name || user?.email || "Customer",
-                }),
-            }),
-        ),
-    );
+  return Promise.all(
+    admins.map(adminEmail =>
+      sendEmail({
+        to: adminEmail,
+        subject: `New Order Received #${order._id.toString().slice(-8).toUpperCase()} — Afzal Bikerz Store`,
+        html: adminNewOrderTemplate({
+          order,
+          customerName: user?.name || user?.email || "Customer",
+        }),
+      }),
+    ),
+  );
 };
 
 export const sendAdminLowStockEmail = (product, remainingStock) => {
-    const admins = parseAdminEmails();
-    if (admins.length === 0) return Promise.resolve();
+  const admins = parseAdminEmails();
+  if (admins.length === 0) return Promise.resolve();
 
-    const threshold = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
+  const threshold = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
 
-    return Promise.all(
-        admins.map(adminEmail =>
-            sendEmail({
-                to: adminEmail,
-                subject: `Low Stock Alert: ${product.title} — Afzal Bikerz Studio`,
-                html: lowStockTemplate({
-                    product,
-                    remainingStock,
-                    threshold,
-                }),
-            }),
-        ),
-    );
+  return Promise.all(
+    admins.map(adminEmail =>
+      sendEmail({
+        to: adminEmail,
+        subject: `Low Stock Alert: ${product.title} — Afzal Bikerz Store`,
+        html: lowStockTemplate({
+          product,
+          remainingStock,
+          threshold,
+        }),
+      }),
+    ),
+  );
 };

@@ -13,10 +13,7 @@ const LOW_STOCK_THRESHOLD = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
 
 // Create new order (COD)
 export const createOrder = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
-
-    try {
+    const runOrderLogic = async (sessionOption = {}) => {
         const {
             items,
             shippingInfo,
@@ -48,7 +45,7 @@ export const createOrder = async (req, res) => {
                 throw new Error("Invalid item in order");
             }
 
-            const product = await Product.findById(item.product).session(session);
+            const product = await Product.findById(item.product, null, sessionOption);
 
             if (!product) {
                 throw new Error("Product not found");
@@ -69,11 +66,10 @@ export const createOrder = async (req, res) => {
                     stock: { $gte: quantity }, // atomic guard
                 },
                 { $inc: { stock: -quantity } },
-                { new: true, session }
+                { new: true, ...sessionOption }
             );
 
             if (!updated) {
-                // The abortTransaction will automatically rollback any previous successful decrements
                 throw new Error(`"${product.title}" just sold out. Please update your cart.`);
             }
 
@@ -110,16 +106,25 @@ export const createOrder = async (req, res) => {
             shippingCost: finalShippingCost,
             tax: finalTax,
             total: calculatedTotal,
-        }], { session });
+        }], sessionOption);
 
         // Clear user's cart after successful order
         await Cart.findOneAndUpdate(
             { user: req.user._id },
             { items: [] },
-            { session }
+            sessionOption
         );
 
-        // Commit transaction BEFORE sending emails or responding
+        return order;
+    };
+
+    let session = null;
+    try {
+        session = await mongoose.startSession();
+        session.startTransaction();
+
+        const order = await runOrderLogic({ session });
+
         await session.commitTransaction();
         session.endSession();
 
@@ -132,15 +137,50 @@ export const createOrder = async (req, res) => {
             sendAdminNewOrderEmail(order, user).catch(() => {});
         }).catch(() => {});
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: "Order placed successfully",
             order,
         });
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
-        
+        if (session) {
+            await session.abortTransaction().catch(() => {});
+            session.endSession();
+        }
+
+        // Fallback for local standalone MongoDB (where replica set transactions are not supported)
+        if (error.message && error.message.includes("replica set")) {
+            try {
+                const order = await runOrderLogic({});
+
+                await order.populate("items.product");
+
+                User.findById(req.user._id).select("name email").then(user => {
+                    if (!user) return;
+                    sendOrderConfirmationEmail(user, order).catch(() => {});
+                    sendAdminNewOrderEmail(order, user).catch(() => {});
+                }).catch(() => {});
+
+                return res.status(201).json({
+                    success: true,
+                    message: "Order placed successfully",
+                    order,
+                });
+            } catch (fallbackError) {
+                const isClientError = fallbackError.message.includes('sold out') || 
+                                      fallbackError.message.includes('No items') || 
+                                      fallbackError.message.includes('Shipping information') || 
+                                      fallbackError.message.includes('Invalid item') || 
+                                      fallbackError.message.includes('not found') || 
+                                      fallbackError.message.includes('only has');
+                                      
+                return res.status(isClientError ? 400 : 500).json({
+                    success: false,
+                    message: fallbackError.message,
+                });
+            }
+        }
+
         // If it's a validation error (like sold out, or missing info), return 400
         const isClientError = error.message.includes('sold out') || 
                               error.message.includes('No items') || 
