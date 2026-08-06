@@ -41,4 +41,11 @@ app.get('/', (req, res) => {
     res.send("Backend Running....")
 })
 
+// Global error handler — catches anything passed to next(err)
+app.use((err, req, res, next) => {
+    console.error("=== GLOBAL ERROR ===");
+    console.error(err.stack || err);
+    res.status(500).json({ success: false, message: err.message });
+});
+
 export default app;
