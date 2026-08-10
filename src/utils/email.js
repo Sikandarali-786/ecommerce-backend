@@ -93,11 +93,6 @@ const welcomeTemplate = ({ name }) => baseTemplate(`
     <li>Track your orders in real time</li>
     <li>Save favourites to your wishlist</li>
   </ul>
-  <div style="text-align:center;">
-    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/products" class="btn">
-      Start Shopping
-    </a>
-  </div>
 `);
 
 // ── Template: Order Confirmation ──────────────────────────────────────────────
