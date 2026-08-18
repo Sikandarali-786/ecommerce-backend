@@ -6,7 +6,7 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 const getImagePath = (file) => {
     if (!file) return '';
-    if (IS_PRODUCTION) {
+    if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
         return file.path;
     }
     return `/uploads/products/${file.filename}`;

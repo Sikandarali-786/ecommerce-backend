@@ -9,11 +9,10 @@ const LOW_STOCK_THRESHOLD = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
 
 // Helper: build image path from uploaded file
 const getImagePath = (file) => {
-    if (IS_PRODUCTION) {
-        // Cloudinary returns the full URL in file.path — store as-is
+    if (!file) return '';
+    if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
         return file.path;
     }
-    // Local dev: store only the relative path, NOT the full URL
     return `/uploads/products/${file.filename}`;
 };
 

@@ -3,11 +3,21 @@ import path from 'path';
 import fs from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
+import dotenv from 'dotenv';
 
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+dotenv.config();
+
+const USE_CLOUDINARY = process.env.USE_CLOUDINARY === 'true' || process.env.NODE_ENV === 'production';
+const hasCloudinaryCreds = Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME && 
+    process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloud_name' && 
+    process.env.CLOUDINARY_API_KEY && 
+    process.env.CLOUDINARY_API_SECRET
+);
+const ENABLE_CLOUDINARY = USE_CLOUDINARY && hasCloudinaryCreds;
 
 // ─── CLOUDINARY CONFIG ────────────────────────────────────────────────────────
-if (IS_PRODUCTION) {
+if (ENABLE_CLOUDINARY) {
     cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
@@ -62,7 +72,7 @@ const cloudinaryStorageEngine = () => {
 };
 
 // ─── EXPORT MULTER INSTANCE ───────────────────────────────────────────────────
-const storage = IS_PRODUCTION ? cloudinaryStorageEngine() : localStorageEngine();
+const storage = ENABLE_CLOUDINARY ? cloudinaryStorageEngine() : localStorageEngine();
 
 export const upload = multer({
     storage,
@@ -74,7 +84,7 @@ export const upload = multer({
 export const deleteImage = async (imagePath) => {
     if (!imagePath) return;
     try {
-        if (IS_PRODUCTION) {
+        if (ENABLE_CLOUDINARY || imagePath.includes('cloudinary.com')) {
             // Cloudinary URL format:
             // https://res.cloudinary.com/<cloud>/image/upload/v<version>/<folder>/<subfolder>/<id>.<ext>
             // We need everything after "upload/" (minus the version segment) as the public_id.
