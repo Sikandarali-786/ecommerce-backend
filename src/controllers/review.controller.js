@@ -103,3 +103,60 @@ export const deleteReview = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// ─── GET HOMEPAGE TESTIMONIALS (REAL + FALLBACK HYBRID) ─────────────────────
+export const getHomepageTestimonials = async (req, res) => {
+    try {
+        const fallbackTestimonials = [
+            {
+                _id: 'fb-1',
+                rating: 5,
+                quote: 'Afzal Bikerz Store se jo silencer lia woh to shor kam aur style zyada nikla',
+                name: 'Fahad Ali',
+                isReal: false,
+            },
+            {
+                _id: 'fb-2',
+                rating: 5,
+                quote: 'Wheel rims ordered and received exactly as shown in picture. Bhot impressed.',
+                name: 'Zohaib Khan',
+                isReal: false,
+            },
+            {
+                _id: 'fb-3',
+                rating: 5,
+                quote: 'Lights itni bright hain ke raat mein drive karna asaan ho gaya. Thank you!',
+                name: 'Noman',
+                isReal: false,
+            },
+        ];
+
+        const dbReviews = await Review.find({ rating: { $gte: 4 } })
+            .populate("user", "name")
+            .populate("product", "title")
+            .sort({ rating: -1, createdAt: -1 })
+            .limit(6);
+
+        const formattedDbReviews = dbReviews.map((r) => ({
+            _id: r._id.toString(),
+            rating: r.rating,
+            quote: r.comment,
+            name: r.user?.name || "Verified Customer",
+            productTitle: r.product?.title || null,
+            isReal: true,
+        }));
+
+        let testimonials = [...formattedDbReviews];
+        if (testimonials.length < 3) {
+            const needed = 3 - testimonials.length;
+            testimonials = [...testimonials, ...fallbackTestimonials.slice(0, needed)];
+        }
+
+        res.status(200).json({
+            success: true,
+            testimonials,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

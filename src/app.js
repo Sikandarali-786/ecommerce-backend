@@ -28,6 +28,8 @@ app.use(morgan("dev"));
 // __dirname = backend/src, so go up one level to backend/
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+import { getHomepageTestimonials } from "./controllers/review.controller.js";
+
 app.use("/api/auth", authRoutes)
 app.use("/api/user", userRoutes)
 app.use("/api/categories", categoryRoutes);
@@ -36,6 +38,7 @@ app.use("/api/cart", cartRoutes)
 app.use("/api/wishlist", wishlistRoutes)
 app.use("/api/orders", orderRoutes)
 app.use("/api/product/:productId/reviews", reviewRoutes)
+app.get("/api/testimonials", getHomepageTestimonials);
 
 app.get('/', (req, res) => {
     res.send("Backend Running....")
