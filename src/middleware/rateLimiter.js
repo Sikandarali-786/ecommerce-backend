@@ -27,14 +27,14 @@ export const loginLimiter = rateLimit({
     skipSuccessfulRequests: true,      // successful logins don't count toward the limit
 });
 
-// ── Register: 5 accounts per hour per IP ──────────────────────────────────────
+// ── Register: 50 accounts per 15 minutes per IP ──────────────────────────────
 export const registerLimiter = rateLimit({
-    windowMs:         60 * 60 * 1000, // 1 hour
-    max:              5,
+    windowMs:         15 * 60 * 1000, // 15 minutes
+    max:              50,
     standardHeaders:  true,
     legacyHeaders:    false,
     handler,
-    message: "Too many accounts created from this IP. Please try again after an hour.",
+    message: "Too many accounts created from this IP. Please try again after 15 minutes.",
 });
 
 // ── Forgot password: 5 requests per 15 minutes per IP ────────────────────────
