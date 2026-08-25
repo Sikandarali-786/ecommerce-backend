@@ -33,11 +33,12 @@ const baseTemplate = (content) => `
               font-size:15px; font-weight:600; letter-spacing:0.3px; }
     .divider { border:none; border-top:1px solid #eee; margin:24px 0; }
     .item-row { display:flex; justify-content:space-between; padding:8px 0;
-                border-bottom:1px solid #f0f0f0; font-size:14px; }
-    .item-name { color:#444; }
-    .item-price { font-weight:600; color:#222; }
+                border-bottom:1px solid #f0f0f0; font-size:15px; font-weight:600; }
+    .item-name { color:#444; font-size:15px; font-weight:600; }
+    .item-price { font-weight:600; color:#222; font-size:15px; }
+    .font-weight-bold { font-weight:600; font-size:15px; }
     .total-row  { display:flex; justify-content:space-between; padding:12px 0 0;
-                  font-size:16px; font-weight:700; color:#8B0000; }
+                  font-size:15px; font-weight:600; color:#8B0000; }
     .badge { display:inline-block; padding:5px 14px; border-radius:20px;
              font-size:13px; font-weight:600; }
     .badge-processing { background:#dbeafe; color:#1e40af; }
@@ -59,8 +60,12 @@ const baseTemplate = (content) => `
     <div class="body">${content}</div>
     <div class="footer">
       <p>© 2026 Afzal Bikerz Store · Husain a gahi Market, Multan</p>
-      <p><a href="tel:03048405899">03048405899</a> &nbsp;|&nbsp;
-         <a href="mailto:Afzalbikerzstore@gmail.com">Afzalbikerzstore@gmail.com</a></p>
+      <p><span style="display:inline-block; vertical-align:middle; text-align:center;">
+        <a href="tel:03048405899">03048405899</a><br/>
+        <a href="tel:03700780090">03700780090</a>
+      </span>
+      &nbsp;|&nbsp;
+      <a href="mailto:Afzalbikerzstore@gmail.com">Afzalbikerzstore@gmail.com</a></p>
     </div>
   </div>
 </body>
@@ -120,20 +125,25 @@ const orderConfirmationTemplate = ({ name, order }) => {
       ${itemsHtml}
       <hr class="divider" />
       <div class="item-row">
-        <span class="item-name">Subtotal</span>
-        <span>PKR ${order.subtotal.toLocaleString()}</span>
+        <span class="item-name font-weight-bold">Subtotal : </span>
+        <span class="item-price">PKR ${order.subtotal.toLocaleString()}</span>
+      </div>
+      ${order.discount > 0 ? `
+      <div class="item-row">
+        <span class="item-name font-weight-bold" style="color:#166534;">Advance Payment Discount (1%) : </span>
+        <span class="item-price" style="color:#166534;">- PKR ${order.discount.toLocaleString()}</span>
+      </div>` : ''}
+      <div class="item-row">
+        <span class="item-name font-weight-bold">Shipping : </span>
+        <span class="item-price">${order.shippingCost === 0 ? 'FREE' : `PKR ${order.shippingCost.toLocaleString()}`}</span>
       </div>
       <div class="item-row">
-        <span class="item-name">Shipping</span>
-        <span>${order.shippingCost === 0 ? 'FREE' : `PKR ${order.shippingCost.toLocaleString()}`}</span>
-      </div>
-      <div class="item-row">
-        <span class="item-name">Tax</span>
-        <span>PKR ${order.tax.toLocaleString()}</span>
+        <span class="item-name font-weight-bold">Tax : </span>
+        <span class="item-price">PKR ${order.tax.toLocaleString()}</span>
       </div>
       <div class="total-row">
-        <span>Total</span>
-        <span>PKR ${order.total.toLocaleString()}</span>
+        <span class="item-name font-weight-bold">Total Amount : </span>
+        <span style="font-size:15px; font-weight:600; color:#8B0000;">PKR ${order.total.toLocaleString()}</span>
       </div>
       <hr class="divider" />
 

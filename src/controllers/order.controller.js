@@ -19,6 +19,7 @@ export const createOrder = async (req, res) => {
             shippingInfo,
             paymentMethod = "COD",
             shippingCost: inputShippingCost = 0,
+            discount: inputDiscount = 0,
             tax: inputTax = 0,
         } = req.body;
 
@@ -92,8 +93,9 @@ export const createOrder = async (req, res) => {
         });
 
         const finalShippingCost = Number(inputShippingCost) || 0;
+        const finalDiscount = Number(inputDiscount) || 0;
         const finalTax = Number(inputTax) || 0;
-        const calculatedTotal = calculatedSubtotal + finalShippingCost + finalTax;
+        const calculatedTotal = Math.max(0, calculatedSubtotal + finalShippingCost + finalTax - finalDiscount);
 
         // ── Phase 4: create the order ──────────────────────────────────────
         const [order] = await Order.create([{
@@ -101,9 +103,10 @@ export const createOrder = async (req, res) => {
             items: orderItems,
             shippingInfo,
             paymentMethod,
-            paymentStatus: paymentMethod === "COD" ? "Pending" : "Paid",
+            paymentStatus: "Pending",
             subtotal: calculatedSubtotal,
             shippingCost: finalShippingCost,
+            discount: finalDiscount,
             tax: finalTax,
             total: calculatedTotal,
         }], sessionOption);

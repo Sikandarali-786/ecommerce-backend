@@ -71,7 +71,7 @@ const orderSchema = new mongoose.Schema({
     // Payment Information
     paymentMethod: {
         type: String,
-        enum: ["COD", "Card", "PayPal"],
+        enum: ["COD", "Card", "PayPal", "Advance Payment", "EasyPaisa"],
         default: "COD",
         required: true,
     },
@@ -96,6 +96,10 @@ const orderSchema = new mongoose.Schema({
     shippingCost: {
         type: Number,
         required: true,
+        default: 0,
+    },
+    discount: {
+        type: Number,
         default: 0,
     },
     tax: {
