@@ -113,6 +113,8 @@ export const getHomepageTestimonials = async (req, res) => {
                 rating: 5,
                 quote: 'Afzal Bikerz Store se jo silencer lia woh to shor kam aur style zyada nikla',
                 name: 'Fahad Ali',
+                productTitle: 'Heavy Sound SC Project Silencer',
+                productImage: '/src/assets/images/silencers.jpeg',
                 isReal: false,
             },
             {
@@ -120,6 +122,8 @@ export const getHomepageTestimonials = async (req, res) => {
                 rating: 5,
                 quote: 'Wheel rims ordered and received exactly as shown in picture. Bhot impressed.',
                 name: 'Zohaib Khan',
+                productTitle: 'Alloy Wheel Rims Set',
+                productImage: '/src/assets/images/rims.jpeg',
                 isReal: false,
             },
             {
@@ -127,13 +131,15 @@ export const getHomepageTestimonials = async (req, res) => {
                 rating: 5,
                 quote: 'Lights itni bright hain ke raat mein drive karna asaan ho gaya. Thank you!',
                 name: 'Noman',
+                productTitle: 'Ultra LED Headlight Kit',
+                productImage: '/src/assets/images/decoration.jpeg',
                 isReal: false,
             },
         ];
 
         const dbReviews = await Review.find({ rating: { $gte: 4 } })
             .populate("user", "name")
-            .populate("product", "title")
+            .populate("product", "title images")
             .sort({ rating: -1, createdAt: -1 })
             .limit(6);
 
@@ -143,6 +149,7 @@ export const getHomepageTestimonials = async (req, res) => {
             quote: r.comment,
             name: r.user?.name || "Verified Customer",
             productTitle: r.product?.title || null,
+            productImage: r.product?.images?.[0] || null,
             isReal: true,
         }));
 

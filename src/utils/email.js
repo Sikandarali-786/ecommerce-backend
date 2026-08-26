@@ -134,12 +134,8 @@ const orderConfirmationTemplate = ({ name, order }) => {
         <span class="item-price" style="color:#166534;">- PKR ${order.discount.toLocaleString()}</span>
       </div>` : ''}
       <div class="item-row">
-        <span class="item-name font-weight-bold">Shipping : </span>
+        <span class="item-name font-weight-bold">Shipping Charges : </span>
         <span class="item-price">${order.shippingCost === 0 ? 'FREE' : `PKR ${order.shippingCost.toLocaleString()}`}</span>
-      </div>
-      <div class="item-row">
-        <span class="item-name font-weight-bold">Tax : </span>
-        <span class="item-price">PKR ${order.tax.toLocaleString()}</span>
       </div>
       <div class="total-row">
         <span class="item-name font-weight-bold">Total Amount : </span>

@@ -9,6 +9,7 @@ import {
     sendAdminLowStockEmail,
     sendOrderStatusEmail,
 } from "../utils/email.js";
+import { calculateOrderShipping } from "../utils/shipping.js";
 const LOW_STOCK_THRESHOLD = Number(process.env.LOW_STOCK_THRESHOLD) || 5;
 
 // Create new order (COD)
@@ -92,10 +93,20 @@ export const createOrder = async (req, res) => {
             };
         });
 
-        const finalShippingCost = Number(inputShippingCost) || 0;
-        const finalDiscount = Number(inputDiscount) || 0;
-        const finalTax = Number(inputTax) || 0;
-        const calculatedTotal = Math.max(0, calculatedSubtotal + finalShippingCost + finalTax - finalDiscount);
+        // Calculate weight-based shipping cost on backend using product weights from DB
+        const { shippingCost: calculatedShippingCost } = calculateOrderShipping(productDocs);
+        const finalShippingCost = calculatedShippingCost;
+
+        // 1% Advance Payment Discount if applicable
+        let finalDiscount = 0;
+        if (paymentMethod === "Advance" || paymentMethod === "Advance Payment") {
+            finalDiscount = Math.round(calculatedSubtotal * 0.01);
+        } else if (inputDiscount > 0) {
+            finalDiscount = Number(inputDiscount);
+        }
+
+        const finalTax = 0; // Tax completely removed
+        const calculatedTotal = Math.max(0, calculatedSubtotal + finalShippingCost - finalDiscount);
 
         // ── Phase 4: create the order ──────────────────────────────────────
         const [order] = await Order.create([{

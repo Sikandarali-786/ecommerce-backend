@@ -22,6 +22,11 @@ const productSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    weight: {
+      type: Number,
+      default: 1,
+      min: 0,
+    },
     images: [{ type: String }],
     category: {
       type: mongoose.Schema.Types.ObjectId,
