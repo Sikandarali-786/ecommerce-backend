@@ -19,7 +19,7 @@ const getImagePath = (file) => {
 // ─── CREATE PRODUCT ───────────────────────────────────────────────────────────
 export const createProduct = async (req, res) => {
     try {
-        const { title, description, price, stock, category, weight } = req.body;
+        const { title, description, price, originalPrice, stock, category, weight } = req.body;
 
         if (!title || !description || !price || !stock || !category) {
             return res.status(400).json({
@@ -45,6 +45,7 @@ export const createProduct = async (req, res) => {
             title,
             description,
             price: Number(price),
+            originalPrice: originalPrice ? Number(originalPrice) : null,
             stock: Number(stock),
             weight: typeof weight !== 'undefined' ? Number(weight) : 1,
             images,
@@ -191,7 +192,7 @@ export const updateProduct = async (req, res) => {
         }
 
         const previousStock = product.stock;
-        const { title, description, price, stock, category, weight, removeImages } = req.body;
+        const { title, description, price, originalPrice, stock, category, weight, removeImages } = req.body;
 
         // Handle image removal (array of URLs to delete)
         if (removeImages) {
@@ -212,6 +213,7 @@ export const updateProduct = async (req, res) => {
         if (title !== undefined) product.title = title;
         if (description !== undefined) product.description = description;
         if (price !== undefined) product.price = Number(price);
+        if (originalPrice !== undefined) product.originalPrice = originalPrice ? Number(originalPrice) : null;
         if (stock !== undefined) product.stock = Number(stock);
         if (weight !== undefined) product.weight = Number(weight);
         if (category !== undefined) product.category = category;
