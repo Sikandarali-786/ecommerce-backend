@@ -18,8 +18,8 @@ const productSchema = new mongoose.Schema(
     },
     originalPrice: {
       type: Number,
+      required: true,
       min: 0,
-      default: null,
     },
     stock: {
       type: Number,

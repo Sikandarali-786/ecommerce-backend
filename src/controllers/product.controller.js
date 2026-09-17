@@ -1,4 +1,6 @@
 import Product from "../models/product.model.js";
+import Category from "../models/category.model.js";
+import mongoose from "mongoose";
 import { deleteImage } from "../utils/upload.js";
 import {
     sendAdminLowStockEmail,
@@ -21,10 +23,17 @@ export const createProduct = async (req, res) => {
     try {
         const { title, description, price, originalPrice, stock, category, weight } = req.body;
 
-        if (!title || !description || !price || !stock || !category) {
+        if (!title || !description || !price || !stock || !category || !originalPrice) {
             return res.status(400).json({
                 success: false,
-                message: "All required fields must be provided",
+                message: "Selling price and original price must be provided",
+            });
+        }
+
+        if (Number(originalPrice) <= Number(price)) {
+            return res.status(400).json({
+                success: false,
+                message: "Original price must be greater than the selling price",
             });
         }
 
@@ -96,9 +105,24 @@ export const getAllProducts = async (req, res) => {
             ];
         }
 
-        // Category filter — accepts category _id
+        // Category filter — accepts a category _id, slug, or name.
         if (category?.trim()) {
-            query.category = category.trim();
+            const categoryValue = category.trim();
+            let categoryDocument = null;
+
+            if (mongoose.isValidObjectId(categoryValue)) {
+                categoryDocument = await Category.findById(categoryValue).select('_id');
+            } else {
+                categoryDocument = await Category.findOne({
+                    $or: [
+                        { slug: categoryValue.toLowerCase() },
+                        { name: categoryValue },
+                    ],
+                }).select('_id');
+            }
+
+            // An unknown category must not fall back to the unfiltered list.
+            query.category = categoryDocument?._id ?? null;
         }
 
         // Price range
@@ -214,6 +238,15 @@ export const updateProduct = async (req, res) => {
         if (description !== undefined) product.description = description;
         if (price !== undefined) product.price = Number(price);
         if (originalPrice !== undefined) product.originalPrice = originalPrice ? Number(originalPrice) : null;
+        if (
+            (price !== undefined || originalPrice !== undefined) &&
+            (!product.originalPrice || product.originalPrice <= product.price)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Original price must be greater than the selling price",
+            });
+        }
         if (stock !== undefined) product.stock = Number(stock);
         if (weight !== undefined) product.weight = Number(weight);
         if (category !== undefined) product.category = category;
