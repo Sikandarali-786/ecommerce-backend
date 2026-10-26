@@ -313,7 +313,7 @@ export const sendOrderStatusEmail = (user, order, newStatus) =>
   });
 
 const parseAdminEmails = () =>
-  (process.env.ADMIN_EMAIL || "")
+  (process.env.ADMIN_NOTIFICATION_EMAILS || "")
     .split(",")
     .map(email => email.trim())
     .filter(Boolean);
